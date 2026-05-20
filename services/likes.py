@@ -39,6 +39,19 @@ class LikeService:
             "total_likes": total_likes
         }
 
+    def remove_like(self, user_id: str, portfolio_id: int) -> bool:
+        """Удалить лайк, если он существует"""
+        existing_like = self.db.query(Like).filter(
+            Like.user_id == user_id,
+            Like.portfolio_id == portfolio_id
+        ).first()
+        
+        if existing_like:
+            self.db.delete(existing_like)
+            self.db.commit()
+            return True
+        return False
+
     def get_liked_posts(self, user_id: str) -> list:
         """Получить все посты, которые лайкнул пользователь"""
         likes = self.db.query(Like).filter(Like.user_id == user_id).all()

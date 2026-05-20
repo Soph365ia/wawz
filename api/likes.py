@@ -22,6 +22,19 @@ def toggle_like(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.delete("/{portfolio_id}")
+def remove_like(
+    portfolio_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Удалить лайк с поста"""
+    service = LikeService(db)
+    removed = service.remove_like(current_user.id, portfolio_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Like not found")
+    return {"message": "Like removed", "portfolio_id": portfolio_id}
+
 @router.get("/my", response_model=list[PortfolioWork])  
 def get_my_liked_posts(
     db: Session = Depends(get_db),

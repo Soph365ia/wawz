@@ -1,5 +1,5 @@
 # Роутер авторизации: реализует полный цикл регистрации с email-верификацией, входа, выхода и заполнения профиля пользователя.
-from fastapi import APIRouter, Depends, Response, status, HTTPException, Request
+from fastapi import APIRouter, Depends, Response, status, HTTPException, Request, Form
 from sqlalchemy.orm import Session
 from schemas.users import (
     UserRegisterRequest,
@@ -78,7 +78,7 @@ def verify_code(input: VerificationCodeInput, db: Session = Depends(get_db)):
     Шаг 2: Подтверждение email кодом
     
     - Проверяет код из EmailVerification таблицы
-    - СОЗДАЁТ пользователя в БД только после подтверждения
+    - СОЗДАЁМ пользователя в БД только после подтверждения
     - НЕ возвращает токен (пользователь должен войти отдельно)
     """
     email_service = EmailService(db)
@@ -233,6 +233,50 @@ def login(
     # Проверяем пароль
     if not verify_password(credentials.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Неверный login или пароль")
+    
+    # Проверяем что email подтверждён
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=403,
+            detail="Email не подтверждён. Пожалуйста, подтвердите код из письма."
+        )
+    
+    # Генерируем токен
+    token = create_access_token({"sub": user.login})
+    
+    # Устанавливаем cookie
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=False,
+        samesite="lax"
+    )
+    
+    return AccessToken(access_token=token, token_type="bearer")
+
+# TOKEN (OAuth2 compatible)
+
+@router.post("/token", response_model=AccessToken)
+def token(
+    response: Response,
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """
+    OAuth2 compatible token endpoint (form-urlencoded)
+    """
+    repo = UserRepository(db)
+    
+    # Находим пользователя по login (username)
+    user = repo.get_by_login(username)
+    if not user:
+        raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+    
+    # Проверяем пароль
+    if not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Неверный логин или пароль")
     
     # Проверяем что email подтверждён
     if not user.is_verified:

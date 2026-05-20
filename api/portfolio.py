@@ -1,7 +1,7 @@
 # Роутер портфолио: управляет созданием, получением, редактированием и удалением постов пользователя, включая загрузку изображений.
 import os
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 from schemas import PortfolioWork, PortfolioWorkCreate
 from services.portfolio import PortfolioService
@@ -62,6 +62,26 @@ async def create_portfolio_work(
     )
     
     return service.create_portfolio_work(portfolio, current_user.id)
+
+@router.post("/json", response_model=PortfolioWork, status_code=status.HTTP_201_CREATED)
+async def create_portfolio_work_json(
+    portfolio: PortfolioWorkCreate,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Создать пост через JSON (без загрузки файла)"""
+    service = PortfolioService(db)
+    return service.create_portfolio_work(portfolio, current_user.id)
+
+@router.get("/", response_model=list[PortfolioWork])
+def get_public_feed(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Получить публичные посты для ленты (пагинация)"""
+    service = PortfolioService(db)
+    return service.get_public_feed(skip=skip, limit=limit)
 
 @router.get("/my", response_model=list[PortfolioWork])
 def get_my_portfolio(

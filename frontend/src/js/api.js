@@ -11,6 +11,7 @@ function authHeaders() {
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: authHeaders(),
+    credentials: 'include',
     ...options
   });
   let data;
@@ -44,6 +45,7 @@ export const authAPI = {
     const res = await fetch(`${BASE_URL}/auth/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      credentials: 'include',
       body: form
     });
     const data = await res.json();
@@ -65,7 +67,9 @@ export const usersAPI = {
 
 export const postsAPI = {
   feed(skip = 0, limit = 20) { return request(`/portfolio/?skip=${skip}&limit=${limit}`); },
-  create(payload) { return request('/portfolio/', { method: 'POST', body: JSON.stringify(payload) }); },
+  my() { return request('/portfolio/my'); },
+  myLiked() { return request('/likes/my'); },
+  create(payload) { return request('/portfolio/json', { method: 'POST', body: JSON.stringify(payload) }); },
   like(postId) { return request(`/likes/${postId}`, { method: 'POST' }); },
   unlike(postId) { return request(`/likes/${postId}`, { method: 'DELETE' }); }
 };

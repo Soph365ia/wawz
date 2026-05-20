@@ -31,6 +31,21 @@ class PortfolioService:
             .all()
         ]
 
+    def get_public_feed(self, skip: int = 0, limit: int = 20) -> list[PortfolioWork]:
+        """
+        Получить публичные посты для ленты с пагинацией
+        """
+        query = self.db.query(PortfolioWorkModel).filter(
+            PortfolioWorkModel.visibility == "public"
+        ).order_by(PortfolioWorkModel.created_at.desc())
+        
+        if skip:
+            query = query.offset(skip)
+        if limit:
+            query = query.limit(limit)
+        
+        return [PortfolioWork.model_validate(p) for p in query.all()]
+
     def get_portfolio_by_id(self, portfolio_id: int) -> PortfolioWork | None:
         db_portfolio = self.db.query(PortfolioWorkModel).filter(
             PortfolioWorkModel.id == portfolio_id
